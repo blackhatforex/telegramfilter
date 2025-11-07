@@ -2,7 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
 // CONFIGURATION
-const TOKEN = '8058093320:AAHXaS-KjDHQm6NlSDvD26yztxaWz1mj_fM'; // Your bot token
+const TOKEN = '8058093320:AAE1jXIDa6YV00k8RstvXdkn7USrFhLmFIU'; // Your bot token
 const CHANNEL_USERNAME = '@proibtalent1'; // Channel to monitor (include @)
 const LOG_CHANNEL = '@proibtalent1'; // Where to post extracted signals (optional)
 const PORT = 3000;
@@ -105,4 +105,5 @@ app.listen(PORT, () => {
   console.log(`🤖 Bot running and monitoring ${CHANNEL_USERNAME} for Forex signals...`);
   console.log(`🚀 Express server listening on port ${PORT}`);
   console.log(`🌐 Visit http://localhost:${PORT} to check bot status`);
+
 });
