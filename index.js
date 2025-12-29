@@ -2,71 +2,49 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
 // CONFIGURATION
-const TOKEN = '7889826281:AAFKbP-fbw8WvLiI1ILdkoM9IRz5Y7npaXk'; // Your bot token
-const CHANNEL_USERNAME = '@proibtalent1'; // Channel to monitor (include @)
-const LOG_CHANNEL = '@proibtalent1'; // Where to post extracted signals (optional)
-const PORT = 3000;
+const TOKEN = '7889826281:AAFKbP-fbw8WvLiI1ILdkoM9IRz5Y7npaXk'; 
+const CHANNEL_USERNAME = '@proibtalent1'; 
+const LOG_CHANNEL = '@proibtalent1'; 
 
-// Initialize bot and express app
-const bot = new TelegramBot(TOKEN, { polling: true });
+// 1. Initialize bot WITHOUT polling
+const bot = new TelegramBot(TOKEN);
 const app = express();
+app.use(express.json()); // Essential for parsing Telegram updates
 
-// Forex symbol pattern (matches EURUSD, GBPUSD, etc.)
 const FOREX_PAIR_REGEX = /[A-Z]{6}|[A-Z]{3}\/[A-Z]{3}/;
 
-// Signal normalization
 function normalizeSignal(text) {
   if (!text) return null;
-  
-  // Convert all variations to standardized signals
   const buyPattern = /bullish|up|long|buy/gi;
   const sellPattern = /bearish|down|short|sell/gi;
-  
   if (buyPattern.test(text)) return 'BUY';
   if (sellPattern.test(text)) return 'SELL';
   return null;
 }
 
-// Process message content
 function extractForexSignal(text) {
   if (!text) return null;
-
-  // Find Forex pair
   const symbolMatch = text.match(FOREX_PAIR_REGEX);
   if (!symbolMatch) return null;
-
   const symbol = symbolMatch[0];
   const signal = normalizeSignal(text);
-
-  if (!signal) return null;
-
-  return { symbol, signal };
+  return signal ? { symbol, signal } : null;
 }
 
-// Channel post handler
+// Logic remains the same, but triggered by the webhook
 bot.on('channel_post', async (msg) => {
   try {
-    // Only process messages from target channel
     if (msg.chat.username !== CHANNEL_USERNAME.replace('@', '')) return;
-
     const originalText = msg.text || msg.caption;
     if (!originalText) return;
 
-    // Extract signal
     const forexSignal = extractForexSignal(originalText);
-    
     if (forexSignal) {
       const { symbol, signal } = forexSignal;
       const formattedSignal = `${symbol} ${signal}`;
       
-      console.log(`📊 Extracted Signal: ${formattedSignal}`);
-      
-      // Send to log channel (optional)
-      if (LOG_CHANNEL) {
-        await bot.sendMessage(LOG_CHANNEL, formattedSignal);
-      }
-      
-      // Rewrite original message (if you want to modify the source)
+      if (LOG_CHANNEL) await bot.sendMessage(LOG_CHANNEL, formattedSignal);
+
       const cleanMessage = originalText
         .replace(/bullish|up|long/gi, 'BUY')
         .replace(/bearish|down|short/gi, 'SELL');
@@ -77,34 +55,20 @@ bot.on('channel_post', async (msg) => {
       });
     }
   } catch (error) {
-    console.error('Error processing message:', error.message);
+    console.error('Error:', error.message);
   }
 });
 
-// Error handling
-bot.on('polling_error', (error) => {
-  console.error('Polling error:', error);
+// 2. NEW: Webhook Endpoint
+// Telegram will send updates to this POST route
+app.post(`/api/webhook`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200); // Tell Telegram we received it
 });
 
-// Express routes
 app.get('/', (req, res) => {
-  res.json({
-    status: 'running',
-    message: '🤖 Forex Signal Bot is active!',
-    monitoring: CHANNEL_USERNAME,
-    timestamp: new Date().toISOString()
-  });
+  res.status(200).send("Bot is alive and waiting for Webhooks.");
 });
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', bot: 'running' });
-});
-
-// Start the server
-app.listen(PORT, () => {
-  console.log(`🤖 Bot running and monitoring ${CHANNEL_USERNAME} for Forex signals...`);
-  console.log(`🚀 Express server listening on port ${PORT}`);
-  console.log(`🌐 Visit http://localhost:${PORT} to check bot status`);
-
-});
-
+// Export for Vercel
+module.exports = app;
